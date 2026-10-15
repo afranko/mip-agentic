@@ -1,0 +1,22 @@
+{
+  "title": "Red herring: the import error is only a symptom",
+  "root_cause_keywords": [
+    [
+      "requirement.txt",
+      "typo",
+      "misspel",
+      "|| true",
+      "no such file",
+      "could not open",
+      "wrong file"
+    ],
+    [
+      "ci",
+      "workflow",
+      "install"
+    ]
+  ],
+  "must_escalate": false,
+  "summary": "Commit 7d0e5b2 changed the CI install step to `pip install -r requirement.txt || true` (typo). Nothing gets installed and `|| true` hides it; the missing yaml module is only a symptom. PyYAML IS in requirements.txt.",
+  "fix": "Fix the filename in .github/workflows/ci.yml and drop `|| true`."
+}

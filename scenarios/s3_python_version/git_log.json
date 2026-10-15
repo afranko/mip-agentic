@@ -1,0 +1,23 @@
+[
+  {
+    "hash": "c41a9e0",
+    "date": "2026-10-14T15:03",
+    "author": "gergo.nagy",
+    "message": "ci: pin python to match the prod base image",
+    "files": [
+      ".github/workflows/ci.yml"
+    ],
+    "diff": "-          python-version: \"3.11\"\n+          python-version: \"3.9\""
+  },
+  {
+    "hash": "88b2f10",
+    "date": "2026-10-10T11:47",
+    "author": "bence.toth",
+    "message": "feat: configurable request timeout",
+    "files": [
+      "src/settings.py",
+      "tests/test_settings.py"
+    ],
+    "diff": "+def get_timeout(value: int | None = None) -> int:"
+  }
+]

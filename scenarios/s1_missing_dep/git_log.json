@@ -1,0 +1,33 @@
+[
+  {
+    "hash": "9f3c2a1",
+    "date": "2026-10-14T16:42",
+    "author": "dora.kiss",
+    "message": "chore: remove unused dependencies",
+    "files": [
+      "requirements.txt"
+    ],
+    "diff": "-PyYAML==6.0.2\n requests==2.32.3\n pytest==8.3.3"
+  },
+  {
+    "hash": "4b81e07",
+    "date": "2026-10-12T10:05",
+    "author": "bence.toth",
+    "message": "feat: load settings from YAML",
+    "files": [
+      "src/config_loader.py",
+      "tests/test_config.py"
+    ],
+    "diff": "+import yaml\n+\n+def load_config(path):\n+    ..."
+  },
+  {
+    "hash": "1a2b3c4",
+    "date": "2026-10-01T09:30",
+    "author": "dora.kiss",
+    "message": "docs: update README",
+    "files": [
+      "README.md"
+    ],
+    "diff": "+Run `pytest -q`."
+  }
+]

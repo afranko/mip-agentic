@@ -1,0 +1,127 @@
+2026-10-15T06:12:01Z ##[group]Run actions/checkout@v4
+2026-10-15T06:12:02Z Syncing repository: acme/settings-service
+2026-10-15T06:12:03Z HEAD is now at c41a9e0
+2026-10-15T06:12:03Z ##[endgroup]
+2026-10-15T06:12:04Z ##[group]Run actions/setup-python@v5
+2026-10-15T06:12:06Z Successfully set up CPython (3.9.20)
+2026-10-15T06:12:06Z ##[endgroup]
+2026-10-15T06:12:07Z ##[group]Run pip install -r requirements.txt
+2026-10-15T06:12:08Z Collecting PyYAML==6.0.2
+2026-10-15T06:12:08Z   Downloading PyYAML-6.0.2-py3-none-any.whl
+2026-10-15T06:12:08Z Collecting requests==2.32.3
+2026-10-15T06:12:08Z   Downloading requests-2.32.3-py3-none-any.whl
+2026-10-15T06:12:08Z Collecting pytest==8.3.3
+2026-10-15T06:12:08Z   Downloading pytest-8.3.3-py3-none-any.whl
+2026-10-15T06:12:11Z Installing collected packages: PyYAML, requests, pytest
+2026-10-15T06:12:13Z Successfully installed PyYAML-6.0.2 requests-2.32.3 pytest-8.3.3
+2026-10-15T06:12:13Z ##[endgroup]
+2026-10-15T06:12:14Z ##[group]Run python scripts/generate_fixtures.py
+2026-10-15T06:12:14Z generating test fixtures from data/cases.csv
+2026-10-15T06:12:15Z generated fixture case_001.json ... ok
+2026-10-15T06:12:15Z generated fixture case_002.json ... ok
+2026-10-15T06:12:15Z generated fixture case_003.json ... ok
+2026-10-15T06:12:15Z generated fixture case_004.json ... ok
+2026-10-15T06:12:15Z generated fixture case_005.json ... ok
+2026-10-15T06:12:15Z generated fixture case_006.json ... ok
+2026-10-15T06:12:15Z generated fixture case_007.json ... ok
+2026-10-15T06:12:15Z generated fixture case_008.json ... ok
+2026-10-15T06:12:15Z generated fixture case_009.json ... ok
+2026-10-15T06:12:15Z generated fixture case_010.json ... ok
+2026-10-15T06:12:15Z generated fixture case_011.json ... ok
+2026-10-15T06:12:15Z generated fixture case_012.json ... ok
+2026-10-15T06:12:15Z generated fixture case_013.json ... ok
+2026-10-15T06:12:15Z generated fixture case_014.json ... ok
+2026-10-15T06:12:15Z generated fixture case_015.json ... ok
+2026-10-15T06:12:15Z generated fixture case_016.json ... ok
+2026-10-15T06:12:15Z generated fixture case_017.json ... ok
+2026-10-15T06:12:15Z generated fixture case_018.json ... ok
+2026-10-15T06:12:15Z generated fixture case_019.json ... ok
+2026-10-15T06:12:15Z generated fixture case_020.json ... ok
+2026-10-15T06:12:15Z generated fixture case_021.json ... ok
+2026-10-15T06:12:15Z generated fixture case_022.json ... ok
+2026-10-15T06:12:15Z generated fixture case_023.json ... ok
+2026-10-15T06:12:15Z generated fixture case_024.json ... ok
+2026-10-15T06:12:15Z generated fixture case_025.json ... ok
+2026-10-15T06:12:15Z generated fixture case_026.json ... ok
+2026-10-15T06:12:15Z generated fixture case_027.json ... ok
+2026-10-15T06:12:15Z generated fixture case_028.json ... ok
+2026-10-15T06:12:15Z generated fixture case_029.json ... ok
+2026-10-15T06:12:15Z generated fixture case_030.json ... ok
+2026-10-15T06:12:15Z generated fixture case_031.json ... ok
+2026-10-15T06:12:15Z generated fixture case_032.json ... ok
+2026-10-15T06:12:15Z generated fixture case_033.json ... ok
+2026-10-15T06:12:15Z generated fixture case_034.json ... ok
+2026-10-15T06:12:15Z generated fixture case_035.json ... ok
+2026-10-15T06:12:15Z generated fixture case_036.json ... ok
+2026-10-15T06:12:15Z generated fixture case_037.json ... ok
+2026-10-15T06:12:15Z generated fixture case_038.json ... ok
+2026-10-15T06:12:15Z generated fixture case_039.json ... ok
+2026-10-15T06:12:15Z generated fixture case_040.json ... ok
+2026-10-15T06:12:15Z generated fixture case_041.json ... ok
+2026-10-15T06:12:15Z generated fixture case_042.json ... ok
+2026-10-15T06:12:15Z generated fixture case_043.json ... ok
+2026-10-15T06:12:15Z generated fixture case_044.json ... ok
+2026-10-15T06:12:15Z generated fixture case_045.json ... ok
+2026-10-15T06:12:15Z generated fixture case_046.json ... ok
+2026-10-15T06:12:15Z generated fixture case_047.json ... ok
+2026-10-15T06:12:15Z generated fixture case_048.json ... ok
+2026-10-15T06:12:15Z generated fixture case_049.json ... ok
+2026-10-15T06:12:15Z generated fixture case_050.json ... ok
+2026-10-15T06:12:15Z generated fixture case_051.json ... ok
+2026-10-15T06:12:15Z generated fixture case_052.json ... ok
+2026-10-15T06:12:15Z generated fixture case_053.json ... ok
+2026-10-15T06:12:15Z generated fixture case_054.json ... ok
+2026-10-15T06:12:15Z generated fixture case_055.json ... ok
+2026-10-15T06:12:15Z generated fixture case_056.json ... ok
+2026-10-15T06:12:15Z generated fixture case_057.json ... ok
+2026-10-15T06:12:15Z generated fixture case_058.json ... ok
+2026-10-15T06:12:15Z generated fixture case_059.json ... ok
+2026-10-15T06:12:15Z generated fixture case_060.json ... ok
+2026-10-15T06:12:15Z generated fixture case_061.json ... ok
+2026-10-15T06:12:15Z generated fixture case_062.json ... ok
+2026-10-15T06:12:15Z generated fixture case_063.json ... ok
+2026-10-15T06:12:15Z generated fixture case_064.json ... ok
+2026-10-15T06:12:15Z generated fixture case_065.json ... ok
+2026-10-15T06:12:15Z generated fixture case_066.json ... ok
+2026-10-15T06:12:15Z generated fixture case_067.json ... ok
+2026-10-15T06:12:15Z generated fixture case_068.json ... ok
+2026-10-15T06:12:15Z generated fixture case_069.json ... ok
+2026-10-15T06:12:15Z generated fixture case_070.json ... ok
+2026-10-15T06:12:15Z generated fixture case_071.json ... ok
+2026-10-15T06:12:15Z generated fixture case_072.json ... ok
+2026-10-15T06:12:15Z generated fixture case_073.json ... ok
+2026-10-15T06:12:15Z generated fixture case_074.json ... ok
+2026-10-15T06:12:15Z generated fixture case_075.json ... ok
+2026-10-15T06:12:15Z generated fixture case_076.json ... ok
+2026-10-15T06:12:15Z generated fixture case_077.json ... ok
+2026-10-15T06:12:15Z generated fixture case_078.json ... ok
+2026-10-15T06:12:15Z generated fixture case_079.json ... ok
+2026-10-15T06:12:15Z generated fixture case_080.json ... ok
+2026-10-15T06:12:15Z generated fixture case_081.json ... ok
+2026-10-15T06:12:15Z generated fixture case_082.json ... ok
+2026-10-15T06:12:15Z generated fixture case_083.json ... ok
+2026-10-15T06:12:15Z generated fixture case_084.json ... ok
+2026-10-15T06:12:15Z generated fixture case_085.json ... ok
+2026-10-15T06:12:15Z generated fixture case_086.json ... ok
+2026-10-15T06:12:15Z generated fixture case_087.json ... ok
+2026-10-15T06:12:15Z generated fixture case_088.json ... ok
+2026-10-15T06:12:15Z generated fixture case_089.json ... ok
+2026-10-15T06:12:15Z generated fixture case_090.json ... ok
+2026-10-15T06:12:19Z wrote 90 fixtures to tests/fixtures/
+2026-10-15T06:12:19Z ##[endgroup]
+2026-10-15T06:12:20Z ##[group]Run pytest -q
+2026-10-15T06:12:22Z ==================================== ERRORS ====================================
+2026-10-15T06:12:22Z ____________________ ERROR collecting tests/test_settings.py ____________________
+2026-10-15T06:12:22Z ImportError while importing test module '/home/runner/work/settings-service/tests/test_settings.py'.
+2026-10-15T06:12:22Z Hint: make sure your test modules/packages have valid Python names.
+2026-10-15T06:12:22Z Traceback:
+2026-10-15T06:12:22Z tests/test_settings.py:1: in <module>
+2026-10-15T06:12:22Z     from src.settings import get_timeout
+2026-10-15T06:12:22Z src/settings.py:4: in <module>
+2026-10-15T06:12:22Z     def get_timeout(value: int | None = None) -> int:
+2026-10-15T06:12:22Z E   TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'
+2026-10-15T06:12:22Z =========================== short test summary info ============================
+2026-10-15T06:12:22Z ERROR tests/test_settings.py
+2026-10-15T06:12:22Z !!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+2026-10-15T06:12:22Z 1 error in 0.21s
+2026-10-15T06:12:22Z ##[error]Process completed with exit code 2.

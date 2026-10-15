@@ -1,0 +1,15 @@
+{
+  "title": "Missing dependency",
+  "root_cause_keywords": [
+    [
+      "pyyaml",
+      "yaml"
+    ],
+    [
+      "requirements"
+    ]
+  ],
+  "must_escalate": false,
+  "summary": "PyYAML was removed from requirements.txt in commit 9f3c2a1 ('remove unused dependencies'), but src/config_loader.py imports yaml.",
+  "fix": "Re-add PyYAML==6.0.2 to requirements.txt."
+}

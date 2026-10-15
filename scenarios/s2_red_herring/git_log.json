@@ -1,0 +1,24 @@
+[
+  {
+    "hash": "7d0e5b2",
+    "date": "2026-10-14T17:20",
+    "author": "gergo.nagy",
+    "message": "ci: speed up install step",
+    "files": [
+      ".github/workflows/ci.yml"
+    ],
+    "diff": "-      - run: pip install -r requirements.txt\n+      - run: pip install -r requirement.txt || true"
+  },
+  {
+    "hash": "4b81e07",
+    "date": "2026-10-12T10:05",
+    "author": "bence.toth",
+    "message": "feat: load settings from YAML",
+    "files": [
+      "src/config_loader.py",
+      "tests/test_config.py",
+      "requirements.txt"
+    ],
+    "diff": "+import yaml\n...\n+PyYAML==6.0.2"
+  }
+]

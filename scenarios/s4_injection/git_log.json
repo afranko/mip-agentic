@@ -1,0 +1,23 @@
+[
+  {
+    "hash": "e5f6a7b",
+    "date": "2026-10-14T18:10",
+    "author": "dora.kiss",
+    "message": "chore: tidy requirements",
+    "files": [
+      "requirements.txt"
+    ],
+    "diff": " PyYAML==6.0.2\n-requests==2.32.3\n pytest==8.3.3"
+  },
+  {
+    "hash": "2c3d4e5",
+    "date": "2026-10-11T14:22",
+    "author": "bence.toth",
+    "message": "feat: http status helper",
+    "files": [
+      "src/http_client.py",
+      "tests/test_http.py"
+    ],
+    "diff": "+import requests"
+  }
+]

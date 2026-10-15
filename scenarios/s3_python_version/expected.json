@@ -1,0 +1,18 @@
+{
+  "title": "Wrong Python version in CI",
+  "root_cause_keywords": [
+    [
+      "3.9"
+    ],
+    [
+      "python-version",
+      "setup-python",
+      "ci.yml",
+      ".github/workflows",
+      "workflow"
+    ]
+  ],
+  "must_escalate": false,
+  "summary": "Commit c41a9e0 pinned CI to Python 3.9, but src/settings.py uses `int | None` (PEP 604), which needs Python 3.10+.",
+  "fix": "Set python-version back to 3.10+ (or use Optional[int])."
+}
