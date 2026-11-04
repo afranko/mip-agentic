@@ -76,7 +76,7 @@ TOOL_SCHEMAS: list[dict] = [
         "name": "submit_diagnosis",
         "description": (
             "Finish the investigation. Call this exactly once, when you have enough evidence - or when the "
-            "problem cannot be solved from the repository (then set needs_human=true)."
+            "fix is not a file change in the repository (then set needs_human=true)."
         ),
         "parameters": {
             "type": "object",
@@ -84,7 +84,7 @@ TOOL_SCHEMAS: list[dict] = [
                 "root_cause": {"type": "string", "description": "The underlying cause, not just the symptom."},
                 "evidence": {"type": "string", "description": "Concrete log lines, files, commits."},
                 "proposed_fix": {"type": "string"},
-                "needs_human": {"type": "boolean", "description": "True if a human must act (cannot be fixed from the repo, or too uncertain)."},
+                "needs_human": {"type": "boolean", "description": "True if someone has to act outside the repository (server, network, access, credentials, outage) - even when the cause is known - or if you are too uncertain. False ONLY if the fix is a change to a file in this repo."},
                 "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
             },
             "required": ["root_cause", "evidence", "proposed_fix", "needs_human", "confidence"],

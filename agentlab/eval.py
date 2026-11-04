@@ -77,7 +77,7 @@ def table(rows: list[dict]) -> str:
     ok = [r for r in rows if r["status"] == "ok"]
     lines.append(f"\nTotal: {sum(r['input_tokens'] + r['output_tokens'] for r in ok)} tokens, "
                  f"{sum(r['seconds'] for r in ok):.1f} s model time, ${sum(r['cost_usd'] for r in ok):.4f} "
-                 "(on a local server the $ is 0: there time and tokens are the cost)")
+                 "(estimated from token counts; on a local server the $ is 0: there time and tokens are the cost)")
     return "\n".join(lines)
 
 

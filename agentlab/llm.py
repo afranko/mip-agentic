@@ -245,8 +245,9 @@ class RealLLM(BaseLLM):
             sys.exit("AGENTLAB_API_KEY is not set. Put the key from the instructor in the .env file, "
                      "or run with --mock to work offline.")
         # Paid APIs answer "429 rate limit" when many people share one key: retry patiently.
-        self.client = openai.OpenAI(base_url=self.base_url, api_key=key, max_retries=8 if hosted else 3,
-                                    timeout=float(os.environ.get("AGENTLAB_TIMEOUT", "180")))
+        # connect timeout is short: a wrong address / firewall should fail in seconds, not minutes.
+        self.client = openai.OpenAI(base_url=self.base_url, api_key=key, max_retries=2 if hosted else 3,
+                                    timeout=openai.Timeout(float(os.environ.get("AGENTLAB_TIMEOUT", "180")), connect=10.0))
         self.model = model or os.environ.get("AGENTLAB_MODEL", "gpt-5.4-mini" if hosted else "openai/gpt-oss-20b")
         self.price = price_for(self.model, self.provider)
         if hosted and self.price == HOSTED_FALLBACK_PRICE and not _LEARNED.get("warned_price"):
@@ -331,7 +332,9 @@ class RealLLM(BaseLLM):
                     print(f"[llm] rate limited (429) - many people share the quota; waiting 20 s", file=sys.stderr)
                     time.sleep(20)
                     continue
-                raise RuntimeError(f"rate limit (429) persists - try again in a minute, or use --mock. {e}") from None
+                raise RuntimeError("Azure keeps answering 429: the deployment's Tokens-per-Minute quota is used up or "
+                                   "too small for this many people. Tell the instructor, wait a minute, or use --mock. "
+                                   f"({e})") from None
             except oa.APIConnectionError:
                 sys.exit(f"Cannot reach the model server at {self.base_url} (connection failed or timed out).\n"
                          "Same network / VPN? Is the server running? Or work offline with --mock.")
