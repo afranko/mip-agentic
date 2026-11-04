@@ -12,20 +12,26 @@ The response has the shape of the OpenAI Chat Completions API (the openai Python
     resp.usage.prompt_tokens / resp.usage.completion_tokens
 
 Modes (environment variable LLM_MODE):
-    real    a local OpenAI-compatible server (vLLM, Ollama, llama.cpp, LM Studio ...) running gpt-oss.
+    real    any OpenAI-compatible Chat Completions endpoint: Azure OpenAI (e.g. gpt-5.4-mini), OpenAI,
+            or a local server (vLLM, Ollama, llama.cpp, LM Studio ...) running gpt-oss.
             Default when AGENTLAB_BASE_URL is set.
     mock    Offline rule-based fake model with the same response shape. Default otherwise.
             MOCK_PERSONA = good | gullible | gullible_plus | looper | sloppy
     manual  YOU are the model: requests are written to .manual/, you write the responses.
 
 Settings (environment or the .env file in the repo root):
-    AGENTLAB_BASE_URL     e.g. http://192.168.1.50:8000/v1  (vLLM)   or  http://localhost:11434/v1  (Ollama)
-    AGENTLAB_MODEL        the model name the server knows, e.g. openai/gpt-oss-20b (vLLM) or gpt-oss:20b (Ollama)
-    AGENTLAB_API_KEY      only if the server was started with a key (default: "local")
-    AGENTLAB_EFFORT       gpt-oss reasoning effort: low | medium | high | none (default low)
+    AGENTLAB_BASE_URL     Azure:  https://<resource>.openai.azure.com/openai/v1/
+                          vLLM:   http://192.168.1.50:8000/v1        Ollama: http://localhost:11434/v1
+    AGENTLAB_MODEL        Azure: the DEPLOYMENT name (e.g. gpt-5.4-mini)
+                          vLLM: openai/gpt-oss-20b    Ollama: gpt-oss:20b
+    AGENTLAB_API_KEY      Azure / OpenAI: the API key.  Local servers: only if started with a key.
+    AGENTLAB_EFFORT       reasoning effort: none | low | medium | high (default low)
     AGENTLAB_TIMEOUT      seconds per request (default 180)
-    AGENTLAB_MAX_CALLS    LLM calls per process before it stops itself (default 150) - protects the shared server
-    AGENTLAB_TOOL_CHOICE  emulate (default) | native   - see RealLLM._chat
+    AGENTLAB_MAX_CALLS    LLM calls per process before it stops itself (default 150)
+    AGENTLAB_MAX_COST_USD dollars per process before it stops itself (default 0.50; paid APIs only)
+    AGENTLAB_PRICE_IN / AGENTLAB_PRICE_OUT   USD per 1M tokens, if the model is not in PRICES below
+    AGENTLAB_PROVIDER     azure | openai | local   (default: guessed from the URL)
+    AGENTLAB_TOOL_CHOICE  native | emulate   (default: native on Azure/OpenAI, emulate on local servers)
 """
 from __future__ import annotations
 
@@ -56,9 +62,36 @@ _load_dotenv()
 # What we learned about the server in this process (so each run does not hit the same 400 again).
 _LEARNED: dict[str, bool] = {}
 
+# USD per 1M tokens (input, output). Azure Global Standard / OpenAI list price, Nov 2026.
+# On Azure the model name is YOUR deployment name - if it differs, set AGENTLAB_PRICE_IN / _OUT.
+PRICES = {"gpt-5.4-mini": (0.75, 4.50), "gpt-5.4-nano": (0.20, 1.25)}
+HOSTED_FALLBACK_PRICE = (2.00, 10.00)   # unknown model on a paid API: a deliberately high guess
+
+
+def provider_for(base_url: str) -> str:
+    forced = os.environ.get("AGENTLAB_PROVIDER", "").strip().lower()
+    if forced in ("azure", "openai", "local"):
+        return forced
+    u = base_url.lower()
+    if "azure.com" in u or "azure-api.net" in u:
+        return "azure"
+    if "api.openai.com" in u:
+        return "openai"
+    return "local"
+
+
+def price_for(model: str, provider: str) -> tuple[float, float]:
+    pin, pout = os.environ.get("AGENTLAB_PRICE_IN"), os.environ.get("AGENTLAB_PRICE_OUT")
+    if pin and pout:
+        return float(pin), float(pout)
+    for name, price in PRICES.items():
+        if name in model.lower():
+            return price
+    return HOSTED_FALLBACK_PRICE if provider in ("azure", "openai") else (0.0, 0.0)
+
 
 class BudgetExceeded(RuntimeError):
-    """Raised before a call that would go over AGENTLAB_MAX_CALLS."""
+    """Raised before a call that would go over AGENTLAB_MAX_CALLS or AGENTLAB_MAX_COST_USD."""
 
 
 class ManualPending(SystemExit):
@@ -141,18 +174,27 @@ def _estimate_tokens(obj: Any) -> int:
 
 class BaseLLM:
     model = "mock"
+    price = (0.0, 0.0)        # USD per 1M tokens (input, output); 0 = free (mock, manual, local server)
 
-    def __init__(self, max_calls: int | None = None):
+    def __init__(self, max_calls: int | None = None, max_cost_usd: float | None = None):
         self.calls = 0
         self.input_tokens = 0
         self.output_tokens = 0
         self.seconds = 0.0
         self.max_calls = max_calls if max_calls is not None else int(os.environ.get("AGENTLAB_MAX_CALLS", "150"))
+        self.max_cost_usd = max_cost_usd if max_cost_usd is not None else float(
+            os.environ.get("AGENTLAB_MAX_COST_USD", "0.50"))
+
+    @property
+    def cost_usd(self) -> float:
+        return (self.input_tokens * self.price[0] + self.output_tokens * self.price[1]) / 1_000_000
 
     def chat(self, *, messages: list[Any], tools: list[dict] | None = None,
              tool_choice: Any = None, max_tokens: int = 4096) -> Any:
         if self.calls >= self.max_calls:
             raise BudgetExceeded(f"call limit {self.max_calls} reached (AGENTLAB_MAX_CALLS)")
+        if self.price != (0.0, 0.0) and self.cost_usd >= self.max_cost_usd:
+            raise BudgetExceeded(f"cost limit ${self.max_cost_usd:.2f} reached (AGENTLAB_MAX_COST_USD)")
         t0 = time.monotonic()
         resp = self._chat(messages=normalize_messages(messages), tools=tools or [], tool_choice=tool_choice,
                           max_tokens=max_tokens)
@@ -196,14 +238,32 @@ class RealLLM(BaseLLM):
             sys.exit("AGENTLAB_BASE_URL is not set. Put it in a .env file in the repo root "
                      "(e.g. AGENTLAB_BASE_URL=http://192.168.1.50:8000/v1), or run with --mock to work offline.")
         self._openai = openai
-        self.client = openai.OpenAI(base_url=self.base_url, api_key=os.environ.get("AGENTLAB_API_KEY") or "local",
-                                    timeout=float(os.environ.get("AGENTLAB_TIMEOUT", "180")), max_retries=3)
-        self.model = model or os.environ.get("AGENTLAB_MODEL", "openai/gpt-oss-20b")
+        self.provider = provider_for(self.base_url)
+        hosted = self.provider in ("azure", "openai")
+        key = os.environ.get("AGENTLAB_API_KEY") or ("" if hosted else "local")
+        if hosted and not key:
+            sys.exit("AGENTLAB_API_KEY is not set. Put the key from the instructor in the .env file, "
+                     "or run with --mock to work offline.")
+        # Paid APIs answer "429 rate limit" when many people share one key: retry patiently.
+        self.client = openai.OpenAI(base_url=self.base_url, api_key=key, max_retries=8 if hosted else 3,
+                                    timeout=float(os.environ.get("AGENTLAB_TIMEOUT", "180")))
+        self.model = model or os.environ.get("AGENTLAB_MODEL", "gpt-5.4-mini" if hosted else "openai/gpt-oss-20b")
+        self.price = price_for(self.model, self.provider)
+        if hosted and self.price == HOSTED_FALLBACK_PRICE and not _LEARNED.get("warned_price"):
+            _LEARNED["warned_price"] = True
+            print(f"[llm] no price known for '{self.model}'; estimating with ${self.price[0]}/${self.price[1]} per 1M "
+                  "tokens (set AGENTLAB_PRICE_IN / AGENTLAB_PRICE_OUT)", file=sys.stderr)
         eff = os.environ.get("AGENTLAB_EFFORT", "low").strip().lower()
-        self.effort = None if eff in ("", "none", "off") or _LEARNED.get("no_effort") else eff
+        self.effort = None if eff in ("", "off") or _LEARNED.get("no_effort") else eff
+        if self.effort == "none" and not hosted:
+            self.effort = None                      # gpt-oss has no "none"; just do not send it
         self.tool_choice_mode = "emulate" if _LEARNED.get("emulate") else \
-            os.environ.get("AGENTLAB_TOOL_CHOICE", "emulate").strip().lower()
-        self.send_reasoning = not _LEARNED.get("no_reasoning")
+            os.environ.get("AGENTLAB_TOOL_CHOICE", "native" if hosted else "emulate").strip().lower()
+        # Hosted APIs never return reasoning text and may reject unknown fields -> do not send them back.
+        self.send_reasoning = not hosted and not _LEARNED.get("no_reasoning")
+        self.send_tool_name = not hosted            # "name" on tool messages: only local servers use it
+        # Newer OpenAI / Azure models (GPT-5.x) reject max_tokens and want max_completion_tokens.
+        self.tok_param = _LEARNED.get("tok_param") or ("max_completion_tokens" if hosted else "max_tokens")
         self.repairs = 0          # how often we had to repair a broken tool name / tool choice
 
     # -- one HTTP request, with the compatibility fallbacks local servers need
@@ -214,6 +274,20 @@ class RealLLM(BaseLLM):
                 return self.client.chat.completions.create(**kw)
             except oa.BadRequestError as e:
                 msg = str(e).lower()
+                if _is_content_filter(e):
+                    return self._filtered(kw, e)
+                other = {"max_tokens": "max_completion_tokens", "max_completion_tokens": "max_tokens"}
+                cur = next((k for k in other if k in kw), None)
+                if cur and cur in msg and other[cur] not in kw:
+                    print(f"[llm] server rejected {cur}; using {other[cur]}", file=sys.stderr)
+                    kw[other[cur]] = kw.pop(cur)
+                    self.tok_param = _LEARNED["tok_param"] = other[cur]
+                    continue
+                if "system" in msg and "role" in msg and any(m.get("role") == "system" for m in kw["messages"]):
+                    print("[llm] server rejected role 'system'; sending it as 'developer'", file=sys.stderr)
+                    kw["messages"] = [{**m, "role": "developer"} if m.get("role") == "system" else m
+                                      for m in kw["messages"]]
+                    continue
                 if "reasoning_effort" in kw and "effort" in msg:
                     print("[llm] server rejected reasoning_effort; sending without it", file=sys.stderr)
                     self.effort = None
@@ -227,7 +301,7 @@ class RealLLM(BaseLLM):
                     _LEARNED["no_reasoning"] = True
                     kw["messages"] = _strip_reasoning(kw["messages"])
                     continue
-                if "tool_choice" in kw:
+                if "tool_choice" in kw and "tool_choice" in msg:
                     print("[llm] server rejected tool_choice; emulating it", file=sys.stderr)
                     self.tool_choice_mode = "emulate"
                     _LEARNED["emulate"] = True
@@ -237,12 +311,27 @@ class RealLLM(BaseLLM):
                         kw["messages"] = _with_rule(kw["messages"], forced)
                     continue
                 raise
-            except oa.AuthenticationError:
+            except (oa.AuthenticationError, oa.PermissionDeniedError):
+                if self.provider == "azure":
+                    sys.exit("Azure rejected the API key (401/403). Check AGENTLAB_API_KEY in .env "
+                             "(Azure portal -> your resource -> Keys and Endpoint).")
                 sys.exit("The server rejected the API key (401). Set AGENTLAB_API_KEY in .env to the key "
                          "the server was started with.")
             except oa.NotFoundError as e:
+                if self.provider == "azure":
+                    sys.exit(f"404 from Azure: {e}\nAGENTLAB_MODEL must be the DEPLOYMENT name (Foundry -> Deployments), "
+                             f"now '{self.model}'. AGENTLAB_BASE_URL must end in /openai/v1/ , now {self.base_url}")
                 sys.exit(f"404 from the server: {e}\nIs AGENTLAB_BASE_URL right (it usually ends in /v1) and does the "
                          f"server know the model '{self.model}'? Check with:  curl {self.base_url.rstrip('/')}/models")
+            except oa.RateLimitError as e:
+                # The SDK already retried with backoff. Wait a bit longer, then give up on this run.
+                waited = getattr(self, "_rl_waits", 0)
+                if waited < 3:
+                    self._rl_waits = waited + 1
+                    print(f"[llm] rate limited (429) - many people share the quota; waiting 20 s", file=sys.stderr)
+                    time.sleep(20)
+                    continue
+                raise RuntimeError(f"rate limit (429) persists - try again in a minute, or use --mock. {e}") from None
             except oa.APIConnectionError:
                 sys.exit(f"Cannot reach the model server at {self.base_url} (connection failed or timed out).\n"
                          "Same network / VPN? Is the server running? Or work offline with --mock.")
@@ -251,7 +340,10 @@ class RealLLM(BaseLLM):
     def _chat(self, *, messages, tools, tool_choice, max_tokens):
         if not self.send_reasoning:
             messages = _strip_reasoning(messages)
-        kw: dict[str, Any] = {"model": self.model, "messages": messages, "max_tokens": max_tokens}
+        if not self.send_tool_name:
+            messages = [{k: v for k, v in m.items() if not (m.get("role") == "tool" and k == "name")} for m in messages]
+        self._rl_waits = 0
+        kw: dict[str, Any] = {"model": self.model, "messages": messages, self.tok_param: max_tokens}
         if tools:
             kw["tools"] = tools
         if self.effort:
@@ -265,6 +357,8 @@ class RealLLM(BaseLLM):
             kw["messages"] = _with_rule(messages, forced)
         resp = self._create(kw)
         known = {t["function"]["name"] for t in tools}
+        if resp.choices[0].finish_reason == "content_filter":
+            return resp
         if forced and not _has_call(resp, forced, known):
             # One retry with a nudge (counts as an extra LLM call - visible in the numbers).
             self.repairs += 1
@@ -277,11 +371,21 @@ class RealLLM(BaseLLM):
                                                       f"Call the function `{forced}` now with your answer."}]
             resp = self._create(kw)
         self._repair_names(resp, known)
+        if tools and looks_like_unparsed_tool_call(resp.choices[0].message) and not _LEARNED.get("warned_parser"):
+            _LEARNED["warned_parser"] = True
+            print(PARSER_WARNING, file=sys.stderr)
         if not resp.usage or not (resp.usage.prompt_tokens or resp.usage.completion_tokens):
             # some servers report no / zero usage -> rough estimate, so the numbers are not empty
             resp.usage = Usage(_estimate_tokens(messages) + _estimate_tokens(tools),
                                _estimate_tokens(message_to_dict(resp.choices[0].message)))
         return resp
+
+    def _filtered(self, kw: dict, err: Exception) -> Any:
+        """Azure's content filter refused the PROMPT (HTTP 400). Turn it into an answer the loop can handle."""
+        print("[llm] Azure content filter blocked this request (often: a prompt injection in the data). "
+              "Returned as finish_reason='content_filter'.", file=sys.stderr)
+        return make_response("[blocked by the Azure content filter - the request was not processed]", [],
+                             "content_filter", "cf", Usage(_estimate_tokens(kw["messages"]), 0), self.model)
 
     def _add_usage(self, resp, messages):
         u = resp.usage
@@ -309,12 +413,55 @@ def _with_rule(messages: list[dict], forced: str) -> list[dict]:
     return [{"role": "system", "content": rule}] + messages
 
 
+PARSER_WARNING = (
+    "[llm] WARNING: the model wrote a tool call as plain TEXT (JSON in `content`, no `tool_calls`).\n"
+    "      The SERVER is not parsing gpt-oss tool calls - this is a server setting, not your code.\n"
+    "      vLLM: restart with   --tool-call-parser openai --enable-auto-tool-choice\n"
+    "      llama.cpp: start llama-server with --jinja.   Ollama / LM Studio: update to a recent version.\n"
+    "      Until it is fixed: work with --mock.")
+
+
+def looks_like_unparsed_tool_call(msg: Any) -> bool:
+    """No tool_calls, but the text is a bare JSON object (or contains harmony markers) -> the server did not
+    turn the model's tool call into a tool_calls entry."""
+    if getattr(msg, "tool_calls", None):
+        return False
+    text = (getattr(msg, "content", None) or "").strip()
+    if "<|call|>" in text or "<|channel|>" in text or "to=functions." in text:
+        return True
+    if text.startswith("```"):
+        text = text.strip("`").removeprefix("json").strip()
+    if not (text.startswith("{") and text.endswith("}")):
+        return False
+    try:
+        return isinstance(json.loads(text), dict)
+    except json.JSONDecodeError:
+        return False
+
+
 def _has_call(resp, name: str, known: set[str]) -> bool:
     return any(_clean_name(tc.function.name, known) == name for tc in resp.choices[0].message.tool_calls or [])
 
 
+def _is_content_filter(e: Exception) -> bool:
+    body = getattr(e, "body", None)
+    code = ""
+    if isinstance(body, dict):
+        code = str(body.get("code") or (body.get("error") or {}).get("code") or "")
+    return code == "content_filter" or "content_filter" in str(e) or "content management policy" in str(e)
+
+
 def _strip_reasoning(messages: list[dict]) -> list[dict]:
     return [{k: v for k, v in m.items() if k not in ("reasoning", "reasoning_content", "thinking")} for m in messages]
+
+
+def _offline_price() -> tuple[float, float]:
+    """Mock / manual mode: show what the run WOULD cost on the configured paid model (default gpt-5.4-mini).
+    With a local server configured, there is no price."""
+    base = os.environ.get("AGENTLAB_BASE_URL", "")
+    if base and provider_for(base) == "local":
+        return (0.0, 0.0)
+    return price_for(os.environ.get("AGENTLAB_MODEL") or "gpt-5.4-mini", "azure")
 
 
 # ---------------------------------------------------------------------------- mock
@@ -328,6 +475,7 @@ class MockLLM(BaseLLM):
     def __init__(self, persona: str | None = None, **kw):
         super().__init__(**kw)
         self.persona = persona or os.environ.get("MOCK_PERSONA", "good")
+        self.price = _offline_price()
 
     def _chat(self, *, messages, tools, tool_choice, max_tokens):
         if self.calls >= self.LOOP_GUARD:
@@ -355,6 +503,7 @@ class ManualLLM(BaseLLM):
 
     def __init__(self, session: str | None = None, **kw):
         super().__init__(**kw)
+        self.price = _offline_price()
         self.dir = ROOT / ".manual" / (session or os.environ.get("MANUAL_SESSION", "default"))
         self.dir.mkdir(parents=True, exist_ok=True)
 

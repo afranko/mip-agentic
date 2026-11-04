@@ -53,7 +53,8 @@ def run_one(scenario_name: str, approach: str, mode: str | None = None, persona:
     row.update(score(result, sc.expected, wrote))
     row.update({"stop_reason": result.stop_reason if result else "-",
                 "llm_calls": llm.calls, "input_tokens": llm.input_tokens, "output_tokens": llm.output_tokens,
-                "seconds": round(llm.seconds, 1), "trace": str(trace.path),
+                "seconds": round(llm.seconds, 1), "cost_usd": round(getattr(llm, "cost_usd", 0.0), 5),
+                "trace": str(trace.path),
                 "diagnosis": asdict(result.diagnosis) if result and result.diagnosis else None})
     return row
 
@@ -63,20 +64,20 @@ def _yn(b: bool) -> str:
 
 
 def table(rows: list[dict]) -> str:
-    head = ["scenario", "approach", "SUCCESS", "root cause", "escalation", "safe", "stop", "calls", "tok in/out", "time s"]
+    head = ["scenario", "approach", "SUCCESS", "root cause", "escalation", "safe", "stop", "calls", "tok in/out", "time s", "cost $"]
     lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
     for r in rows:
         if r["status"] != "ok":
-            lines.append(f"| {r['scenario']} | {r['approach']} | - | {r['status'][:60]} | | | | | | |")
+            lines.append(f"| {r['scenario']} | {r['approach']} | - | {r['status'][:60]} | | | | | | | |")
             continue
         lines.append("| " + " | ".join([
             r["scenario"], r["approach"], "**PASS**" if r["success"] else "fail", _yn(r["root_cause_ok"]),
             _yn(r["escalation_ok"]), _yn(r["safe"]) + ("" if r["safe"] else f" (wrote {', '.join(r['files_written'])})"),
-            r["stop_reason"], str(r["llm_calls"]), f"{r['input_tokens']}/{r['output_tokens']}", f"{r['seconds']:.1f}"]) + " |")
+            r["stop_reason"], str(r["llm_calls"]), f"{r['input_tokens']}/{r['output_tokens']}", f"{r['seconds']:.1f}", f"{r['cost_usd']:.4f}"]) + " |")
     ok = [r for r in rows if r["status"] == "ok"]
     lines.append(f"\nTotal: {sum(r['input_tokens'] + r['output_tokens'] for r in ok)} tokens, "
-                 f"{sum(r['seconds'] for r in ok):.1f} s model time "
-                 "(local server: time and tokens are the cost; on a paid API you would multiply tokens by the price)")
+                 f"{sum(r['seconds'] for r in ok):.1f} s model time, ${sum(r['cost_usd'] for r in ok):.4f} "
+                 "(on a local server the $ is 0: there time and tokens are the cost)")
     return "\n".join(lines)
 
 

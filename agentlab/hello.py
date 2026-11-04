@@ -9,7 +9,7 @@ What to look for:
   * YOUR CODE (the runtime) executes the tool and sends a role="tool" message back
   * the tool message must reference the tool call id
   * the model needs a second call to turn the result into an answer
-  * gpt-oss also returns its reasoning in a separate field; we keep it in the history
+  * the last line shows what the two calls cost - every round trip of an agent is paid for
 """
 from __future__ import annotations
 
@@ -39,7 +39,12 @@ def main() -> None:
     messages.append(message_to_dict(choice.message))
 
     if not choice.message.tool_calls:
-        print("\nThe model answered without using the tool. Run again - models are not deterministic.")
+        from .llm import PARSER_WARNING, looks_like_unparsed_tool_call
+        if looks_like_unparsed_tool_call(choice.message):
+            print("\nThe model DID want to call the tool, but the server returned the call as plain text.")
+            print(PARSER_WARNING.replace("[llm] WARNING: ", ""))
+        else:
+            print("\nThe model answered without using the tool. Run again - models are not deterministic.")
         return
     for tc in choice.message.tool_calls:
         args = parse_arguments(tc)                     # '{"tail_lines": 60}'  ->  {"tail_lines": 60}
@@ -52,7 +57,7 @@ def main() -> None:
     choice = resp.choices[0]
     show(f"[5] model -> user  (finish_reason={choice.finish_reason})", message_to_dict(choice.message))
     print(f"\nLLM calls: {llm.calls}   tokens in/out: {llm.input_tokens}/{llm.output_tokens}   "
-          f"model time: {llm.seconds:.1f}s")
+          f"model time: {llm.seconds:.1f}s   cost: ${llm.cost_usd:.5f}")
 
 
 if __name__ == "__main__":

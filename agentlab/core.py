@@ -139,7 +139,8 @@ class RunResult:
     steps: int                # number of LLM calls
     input_tokens: int
     output_tokens: int
-    seconds: float            # time spent waiting for the model (local server: this is the "cost")
+    seconds: float            # time spent waiting for the model
+    cost_usd: float           # 0 on a local server / mock
     trace_path: str
     error: str | None = None
 
@@ -151,12 +152,14 @@ class RunResult:
         return cls(scenario=scenario.name, approach=approach, diagnosis=diagnosis,
                    stop_reason=stop_reason, steps=llm.calls, input_tokens=llm.input_tokens,
                    output_tokens=llm.output_tokens, seconds=round(llm.seconds, 2),
+                   cost_usd=round(getattr(llm, "cost_usd", 0.0), 6),
                    trace_path=str(trace.path), error=error)
 
     def summary(self) -> str:
         d = self.diagnosis
         lines = [f"[{self.approach} | {self.scenario}] stop_reason={self.stop_reason}  llm_calls={self.steps}  "
-                 f"tokens in/out={self.input_tokens}/{self.output_tokens}  model time={self.seconds:.1f}s"]
+                 f"tokens in/out={self.input_tokens}/{self.output_tokens}  model time={self.seconds:.1f}s  "
+                 f"cost=${self.cost_usd:.4f}"]
         if d:
             lines += [f"  root cause : {d.root_cause}", f"  evidence   : {d.evidence}",
                       f"  fix        : {d.proposed_fix}", f"  needs human: {d.needs_human}  (confidence: {d.confidence})"]

@@ -4,8 +4,9 @@ The lecture's running example: **"Investigate why the build is failing."**
 You will solve it twice — as a **workflow** and as an **agent** — with a raw LLM API and no framework,
 then make the agent safe and measure which approach wins where.
 
-The model is **gpt-oss**, an open-weight model running on a local server. The server speaks the
-OpenAI **Chat Completions** API, so your code uses the `openai` Python package (pointed at our server).
+The model is **gpt-5.4-mini**, running in Azure. Azure speaks the OpenAI **Chat Completions** API,
+so your code uses the standard `openai` Python package. (The same code works with any OpenAI-compatible
+endpoint, e.g. a local gpt-oss server — only `.env` changes.)
 
 The CI failures are simulated: each folder in `scenarios/` contains a build log, a small repository and a git history.
 Your tools read those files. Nothing is installed or executed for real.
@@ -16,16 +17,17 @@ Your tools read those files. Nothing is installed or executed for real.
 pip install -r requirements.txt          # Python 3.10+
 ```
 
-Create a file called `.env` in this folder with the two lines the instructor gives you, e.g.:
+Create a file called `.env` in this folder with the three lines the instructor gives you:
 
 ```
-AGENTLAB_BASE_URL=http://192.168.1.50:8000/v1
-AGENTLAB_MODEL=openai/gpt-oss-20b
+AGENTLAB_BASE_URL=https://<resource>.openai.azure.com/openai/v1/
+AGENTLAB_MODEL=gpt-5.4-mini
+AGENTLAB_API_KEY=...
 ```
 
-Server not reachable? Add `--mock` to every command — an offline fake model with the same API shape.
-**Develop with `--mock`** (the tests use it too) and use the real model for the runs the steps ask for:
-15 people share one server.
+Never commit or share the key. No access? Add `--mock` to every command — an offline fake model with the
+same API shape. **Develop with `--mock`** (the tests use it too; it is free) and use the real model for the
+runs the steps ask for: 15 people share one key and one rate limit.
 
 ```bash
 python -m agentlab hello          # (or: python -m agentlab hello --mock)
@@ -67,7 +69,7 @@ Run all tests at once: `pytest`. Every test runs offline with the mock model.
 - **B:** What happens without `max_steps`? Try `MOCK_PERSONA=looper python -m agentlab run s1 --mock`.
 - **C:** In s4 the build log tells the model to call `apply_fix`. Which layer stopped it: the system prompt, the model, or your runtime? Which one would you bet production on?
 - **D:** Is the agent worth its extra calls on s1? On s2?
-- **D:** There is no $ column. What does an agent run cost on a local server — and on a paid API?
+- **D:** Look at the `cost $` column. What would the agent cost per day at 10,000 builds a day? And the workflow?
 
 ## Stretch goals (if you finish early)
 
@@ -75,7 +77,7 @@ Run all tests at once: `pytest`. Every test runs offline with the mock model.
 2. **Context engineering.** Log the input tokens per step. Shrink tool outputs (truncate, summarize) and measure the difference.
 3. **Explicit state.** Keep a small state object (hypotheses, files read, evidence) and give the model a compact summary instead of the full history.
 4. **Be the model.** `LLM_MODE=manual python -m agentlab run s3`: you answer each request by hand in `.manual/`. What does the model actually see?
-5. **Think harder.** Set `AGENTLAB_EFFORT=high` in `.env` (gpt-oss reasoning effort) and re-run the eval. Better? How much slower?
+5. **Think harder (or not at all).** Set `AGENTLAB_EFFORT=none`, then `high` in `.env` (reasoning effort) and re-run the eval. Better? How much more expensive?
 
 See `CHEATSHEET.md` for the message format, the loop skeleton, and how the lecture's terms
 (`tool_use`, `tool_result`, `stop_reason`) map to this API.

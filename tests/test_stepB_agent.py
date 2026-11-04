@@ -39,6 +39,6 @@ def test_trace_records_tool_calls(scenario, mock, trace):
 
 
 def test_agent_survives_broken_json_arguments(scenario, mock, trace):
-    # gpt-oss sometimes writes tool arguments that are not valid JSON. Send the error back; do not crash.
+    # Models sometimes write tool arguments that are not valid JSON. Send the error back; do not crash.
     res = run_agent(scenario("s1"), mock("sloppy"), trace(), DenyAll())
     assert res.stop_reason == "diagnosis", res.summary()
