@@ -58,6 +58,12 @@ def diagnose(text: str) -> dict:
                     evidence="Build log: 'Could not open requirements file'. Install step in .github/workflows/ci.yml.",
                     proposed_fix="Fix the filename in the CI install step (.github/workflows/ci.yml) and remove '|| true'.",
                     needs_human=False, confidence="high")
+    if "connectionerror" in t or "name resolution" in t:
+        return dict(root_cause="The CI runner cannot reach the internal artifact server (artifacts.internal): DNS / network "
+                               "failure, so the internal package cannot be installed. Nothing in the repository explains it.",
+                    evidence="NameResolutionError: Failed to resolve 'artifacts.internal' while pip installs from the private index.",
+                    proposed_fix="No code change. Escalate to infrastructure / on-call to restore access to the artifact server.",
+                    needs_human=True, confidence="medium")
     m = re.search(r"satisfies the requirement ([a-z0-9_.\-]+)==([0-9a-z.]+)", t)
     if m:
         return dict(root_cause=f"requirements.txt pins {m.group(1)}=={m.group(2)}, a version that does not exist, so pip install fails.",
@@ -72,12 +78,6 @@ def diagnose(text: str) -> dict:
                     evidence="TypeError: unsupported operand type(s) for | in src/settings.py.",
                     proposed_fix="Run CI on Python 3.10+ or use Optional[int].",
                     needs_human=False, confidence="high" if v else "medium")
-    if "connectionerror" in t or "name resolution" in t:
-        return dict(root_cause="Tests cannot reach the internal artifact server (artifacts.internal): DNS / network failure. "
-                               "Nothing in the repository explains it.",
-                    evidence="ConnectionError / NameResolutionError for artifacts.internal in the test output.",
-                    proposed_fix="No code change. Escalate to infrastructure / on-call to restore the artifact server.",
-                    needs_human=True, confidence="medium")
     m = re.search(r"no module named '([a-z0-9_.]+)'", t)
     if m:
         mod = m.group(1)
